@@ -43,7 +43,9 @@ def function(arg: str) -> int:
 ## Response Format
 {
   "summary": "<what documentation was created/updated>",
-  "files_changed": ["<relative path>", ...],
+  "files": [
+    {"path": "<relative path>", "content": "<complete file content>"}
+  ],
   "status": "completed",
   "errors": null
 }

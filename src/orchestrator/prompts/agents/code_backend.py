@@ -33,7 +33,9 @@ with a focus on correctness, security, and performance. You work in your assigne
 ## Response Format
 {
   "summary": "<what was implemented, key design decisions>",
-  "files_changed": ["<relative path>", ...],
+  "files": [
+    {"path": "<relative path>", "content": "<complete file content>"}
+  ],
   "status": "completed",
   "errors": null
 }
