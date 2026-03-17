@@ -9,8 +9,10 @@ from __future__ import annotations
 
 import logging
 import os
+from pathlib import Path
 from typing import List
 
+import git
 import openai
 
 from orchestrator.config import SUBAGENT_MODEL, TASK_TIMEOUT
@@ -72,10 +74,13 @@ class SubAgentSpawner:
             f"Title: {task.title}\n"
             f"Description: {task.description}\n"
             f"{worktree_info}\n\n"
-            "Complete the task and respond with a JSON object:\n"
+            "Complete the task by writing all necessary files. "
+            "Respond with a JSON object:\n"
             "{\n"
             '  "summary": "<one paragraph summary of what was done>",\n'
-            '  "files_changed": ["<relative path>", ...],\n'
+            '  "files": [\n'
+            '    {"path": "<relative path>", "content": "<complete file content>"}\n'
+            "  ],\n"
             '  "status": "completed" | "failed",\n'
             '  "errors": "<error message or null>"\n'
             "}"
@@ -88,9 +93,11 @@ class SubAgentSpawner:
                 model=SUBAGENT_MODEL,
                 system=system_prompt,
                 user_message=user_message,
-                max_tokens=4096,
+                max_tokens=16384,
             )
-            result = self._parse_result(task, response_text)
+            result, files_data = self._parse_result(task, response_text)
+            if task.worktree_path and files_data:
+                self._write_and_commit_files(task, files_data)
         except Exception as exc:
             logger.error("Sub-agent for task %s raised: %s", task.id, exc)
             result = AgentResult(
@@ -108,8 +115,13 @@ class SubAgentSpawner:
     # Private helpers
     # ------------------------------------------------------------------
 
-    def _parse_result(self, task: SubTask, text: str) -> AgentResult:
-        """Parse the LLM response into an AgentResult."""
+    def _parse_result(self, task: SubTask, text: str) -> tuple[AgentResult, list[dict]]:
+        """Parse the LLM response into an AgentResult and a list of file dicts.
+
+        Returns:
+            A tuple of (AgentResult, files_data) where files_data is a list of
+            dicts with ``path`` and ``content`` keys.
+        """
         import json
         import re
 
@@ -124,27 +136,66 @@ class SubAgentSpawner:
                 status=TaskStatus.COMPLETED,
                 summary=text[:500],
                 branch=task.branch_name,
-            )
+            ), []
 
         try:
             data = json.loads(match.group())
             status_str = data.get("status", "completed").lower()
             status = TaskStatus.COMPLETED if status_str == "completed" else TaskStatus.FAILED
+
+            # Support new format: files=[{path, content}] or old format: files_changed=[path]
+            files_data: list[dict] = [
+                f for f in data.get("files", [])
+                if isinstance(f, dict) and "path" in f and "content" in f
+            ]
+            files_changed = [f["path"] for f in files_data] or data.get("files_changed", [])
+
             return AgentResult(
                 task_id=task.id,
                 status=status,
                 summary=data.get("summary", "Task completed."),
-                files_changed=data.get("files_changed", []),
+                files_changed=files_changed,
                 branch=task.branch_name,
                 errors=data.get("errors"),
-            )
+            ), files_data
         except json.JSONDecodeError:
             return AgentResult(
                 task_id=task.id,
                 status=TaskStatus.COMPLETED,
                 summary=text[:500],
                 branch=task.branch_name,
-            )
+            ), []
+
+    def _write_and_commit_files(self, task: SubTask, files_data: list[dict]) -> None:
+        """Write files to the worktree directory and commit them.
+
+        Args:
+            task: The subtask whose worktree will receive the files.
+            files_data: List of dicts with ``path`` and ``content`` keys.
+        """
+        worktree = Path(task.worktree_path)
+        written: list[str] = []
+        for file_info in files_data:
+            rel_path = file_info.get("path", "").lstrip("/")
+            content = file_info.get("content", "")
+            if not rel_path:
+                continue
+            full_path = worktree / rel_path
+            full_path.parent.mkdir(parents=True, exist_ok=True)
+            full_path.write_text(content, encoding="utf-8")
+            written.append(rel_path)
+            logger.info("Wrote %s to worktree %s", rel_path, worktree)
+
+        if not written:
+            return
+
+        try:
+            repo = git.Repo(str(worktree))
+            repo.git.add(".")
+            repo.git.commit("-m", f"feat({task.id}): {task.title}")
+            logger.info("Committed %d files for task %s", len(written), task.id)
+        except git.GitCommandError as exc:
+            logger.warning("Could not commit files for task %s: %s", task.id, exc)
 
     def _save_to_memory(self, task: SubTask, result: AgentResult) -> None:
         """Persist the result to Engram."""

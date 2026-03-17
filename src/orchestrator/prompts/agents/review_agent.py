@@ -48,7 +48,9 @@ Provide a structured review with:
 Then respond with:
 {
   "summary": "<review verdict and key findings>",
-  "files_changed": ["<reviewed files>"],
+  "files": [
+    {"path": "<reviewed file>", "content": "<annotated content or review notes>"}
+  ],
   "status": "completed",
   "errors": null
 }

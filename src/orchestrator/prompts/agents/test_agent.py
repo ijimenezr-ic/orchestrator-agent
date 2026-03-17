@@ -34,7 +34,9 @@ to understand what needs to be tested.
 ## Response Format
 {
   "summary": "<what was tested, coverage estimate, key scenarios covered>",
-  "files_changed": ["<relative path>", ...],
+  "files": [
+    {"path": "<relative path>", "content": "<complete file content>"}
+  ],
   "status": "completed",
   "errors": null
 }

@@ -33,7 +33,9 @@ type safety, and modern best practices. You work exclusively within your assigne
 After completing your work, respond with:
 {
   "summary": "<what was implemented, key design decisions>",
-  "files_changed": ["<relative path>", ...],
+  "files": [
+    {"path": "<relative path>", "content": "<complete file content>"}
+  ],
   "status": "completed",
   "errors": null
 }
