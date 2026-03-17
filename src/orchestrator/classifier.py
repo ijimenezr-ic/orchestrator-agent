@@ -9,9 +9,10 @@ from __future__ import annotations
 import logging
 import re
 
-import anthropic
+import openai
 
-from orchestrator.config import ANTHROPIC_API_KEY, ORCHESTRATOR_MODEL
+from orchestrator.config import ORCHESTRATOR_MODEL
+from orchestrator.llm import chat, create_client
 from orchestrator.models import AgentType
 
 logger = logging.getLogger(__name__)
@@ -40,7 +41,7 @@ class AgentClassifier:
     def __init__(self, use_llm_fallback: bool = True) -> None:
         self._use_llm_fallback = use_llm_fallback
         if use_llm_fallback:
-            self._client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
+            self._client = create_client()
 
     def classify(self, title: str, description: str = "") -> AgentType:
         """Determine the agent type for the given subtask.
@@ -80,13 +81,13 @@ class AgentClassifier:
 
     def _llm_classify(self, text: str) -> AgentType:
         try:
-            message = self._client.messages.create(
+            raw = chat(
+                self._client,
                 model=ORCHESTRATOR_MODEL,
-                max_tokens=20,
                 system=_CLASSIFY_SYSTEM,
-                messages=[{"role": "user", "content": text}],
-            )
-            raw = message.content[0].text.strip().lower()
+                user_message=text,
+                max_tokens=20,
+            ).strip().lower()
             return AgentType(raw)
         except (ValueError, Exception) as exc:
             logger.warning("LLM classification failed: %s — defaulting to CODE_GENERIC", exc)

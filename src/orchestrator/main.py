@@ -17,7 +17,7 @@ import typer
 from rich.console import Console
 from rich.table import Table
 
-from orchestrator.config import ANTHROPIC_API_KEY, ENGRAM_URL, ORCHESTRATOR_MODEL, SUBAGENT_MODEL
+from orchestrator.config import ENGRAM_URL, GITHUB_TOKEN, ORCHESTRATOR_MODEL, SUBAGENT_MODEL
 
 app = typer.Typer(
     name="orchestrator",
@@ -35,8 +35,8 @@ def run(
     dry_run: bool = typer.Option(False, "--dry-run", help="Decompose only, do not execute sub-agents"),
 ) -> None:
     """Decompose a task and coordinate sub-agents to complete it."""
-    if not ANTHROPIC_API_KEY:
-        console.print("[bold red]Error:[/] ANTHROPIC_API_KEY is not set. Add it to your .env file.")
+    if not GITHUB_TOKEN:
+        console.print("[bold red]Error:[/] GITHUB_TOKEN is not set. Set it in your .env file or environment.")
         raise typer.Exit(code=1)
 
     console.rule("[bold blue]Orchestrator Agent[/]")
@@ -104,7 +104,7 @@ def status() -> None:
     console.print(f"  Orchestrator model : {ORCHESTRATOR_MODEL}")
     console.print(f"  Sub-agent model    : {SUBAGENT_MODEL}")
     console.print(f"  Engram URL         : {ENGRAM_URL}")
-    console.print(f"  API key set        : {'✅' if ANTHROPIC_API_KEY else '❌'}")
+    console.print(f"  GitHub token set   : {'✅' if GITHUB_TOKEN else '❌'}")
 
     from orchestrator.memory import EngramClient
 

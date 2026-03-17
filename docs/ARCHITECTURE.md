@@ -222,7 +222,7 @@ memory.save_observation(
 
 ## Consideraciones de Seguridad
 
-1. **Secretos**: La API key de Anthropic se lee solo de variables de entorno (`.env`). Nunca se hardcodea.
+1. **Secretos**: El `GITHUB_TOKEN` se lee solo de variables de entorno (`.env`). Nunca se hardcodea. En entornos Copilot está disponible automáticamente; en desarrollo local se usa un PAT con permiso *Models: read*.
 2. **Worktrees aislados**: Los sub-agentes solo pueden escribir en su propio worktree, no en `main`.
 3. **Validación de inputs**: El descomponedor valida que el JSON de respuesta sea parseable antes de crear el DAG.
 4. **Sin ejecución de código arbitrario**: Los sub-agentes generan código pero no lo ejecutan en el host. (TODO: sandbox para Phase 10)

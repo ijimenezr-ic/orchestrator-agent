@@ -12,9 +12,10 @@ import logging
 import re
 from typing import Any, Dict, List
 
-import anthropic
+import openai
 
-from orchestrator.config import ANTHROPIC_API_KEY, ORCHESTRATOR_MODEL
+from orchestrator.config import ORCHESTRATOR_MODEL
+from orchestrator.llm import chat, create_client
 from orchestrator.models import AgentType, SubTask, TaskDAG
 
 logger = logging.getLogger(__name__)
@@ -56,7 +57,7 @@ class TaskDecomposer:
     """Decomposes a user task description into a :class:`~orchestrator.models.TaskDAG`."""
 
     def __init__(self) -> None:
-        self._client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
+        self._client = create_client()
 
     def decompose(self, task_description: str) -> TaskDAG:
         """Send *task_description* to the LLM and parse the structured response.
@@ -71,15 +72,14 @@ class TaskDecomposer:
             ValueError: If the LLM response cannot be parsed as a valid DAG.
         """
         logger.info("Decomposing task: %s", task_description)
-        message = self._client.messages.create(
+        raw_text: str = chat(
+            self._client,
             model=ORCHESTRATOR_MODEL,
-            max_tokens=2048,
             system=_DECOMPOSE_SYSTEM,
-            messages=[{"role": "user", "content": task_description}],
+            user_message=task_description,
+            max_tokens=2048,
         )
-
-        raw_text: str = message.content[0].text.strip()
-        data = self._parse_json(raw_text)
+        data = self._parse_json(raw_text.strip())
         subtasks = self._build_subtasks(data.get("subtasks", []))
 
         logger.info("Decomposed into %d subtasks.", len(subtasks))

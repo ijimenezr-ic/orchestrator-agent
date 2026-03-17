@@ -49,10 +49,11 @@ con memoria persistente a través de [Engram](https://github.com/Gentleman-Progr
 
 ## Prerequisitos
 
+- **GitHub Copilot** subscription (provides access to Claude models via [GitHub Models](https://github.com/marketplace/models))
 - **Python** 3.12+
 - **Git** 2.30+ (soporte nativo de worktrees)
 - **Engram** instalado y corriendo (ver [instalación](#engram))
-- **API Key de Anthropic** con acceso a Claude Opus 4 y Sonnet 4
+- **GitHub token** `GITHUB_TOKEN` — disponible automáticamente con GitHub Copilot; para uso local crea un PAT con permiso *Models: read* en <https://github.com/settings/personal-access-tokens/new>
 
 ---
 
@@ -72,7 +73,10 @@ pip install -e ".[dev]"
 
 # 3. Configurar variables de entorno
 cp .env.example .env
-# Editar .env y añadir ANTHROPIC_API_KEY
+# Editar .env y añadir GITHUB_TOKEN
+# (En entornos GitHub Copilot esta variable ya está disponible automáticamente)
+# Para desarrollo local, crea un token en https://github.com/settings/personal-access-tokens/new
+# con permiso "Models: read"
 ```
 
 ### Engram
@@ -127,9 +131,10 @@ python -m orchestrator memory stats
 
 | Variable | Default | Descripción |
 |----------|---------|-------------|
-| `ANTHROPIC_API_KEY` | — | Requerido. API key de Anthropic |
-| `ORCHESTRATOR_MODEL` | `claude-opus-4-20250514` | Modelo para el orquestador |
-| `SUBAGENT_MODEL` | `claude-sonnet-4-20250514` | Modelo para los sub-agentes |
+| `GITHUB_TOKEN` | — | Requerido. Token de GitHub (disponible automáticamente en entornos Copilot; para uso local crea un PAT con permiso *Models: read*) |
+| `GITHUB_MODELS_URL` | `https://models.inference.ai.azure.com` | Endpoint de GitHub Models API |
+| `ORCHESTRATOR_MODEL` | `claude-opus-4-5` | ID del modelo orquestador en el [catálogo de GitHub Models](https://github.com/marketplace/models) |
+| `SUBAGENT_MODEL` | `claude-sonnet-4-5` | ID del modelo para los sub-agentes |
 | `ENGRAM_URL` | `http://localhost:7437` | URL del servidor Engram |
 | `MAX_RETRIES` | `1` | Reintentos por subtarea en caso de fallo |
 | `MAX_SUBAGENTS` | `2` | Máximo de sub-agentes concurrentes |

@@ -11,9 +11,10 @@ import logging
 import os
 from typing import List
 
-import anthropic
+import openai
 
-from orchestrator.config import ANTHROPIC_API_KEY, SUBAGENT_MODEL, TASK_TIMEOUT
+from orchestrator.config import SUBAGENT_MODEL, TASK_TIMEOUT
+from orchestrator.llm import chat, create_client
 from orchestrator.memory import EngramClient
 from orchestrator.models import AgentResult, AgentType, SubTask, TaskStatus
 from orchestrator.reporter import CompactReporter
@@ -42,7 +43,7 @@ class SubAgentSpawner:
     """Creates and executes sub-agents for individual subtasks."""
 
     def __init__(self, memory: EngramClient | None = None, project: str = "orchestrator") -> None:
-        self._client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
+        self._client = create_client()
         self._memory = memory or EngramClient()
         self._reporter = CompactReporter()
         self._project = project
@@ -82,13 +83,14 @@ class SubAgentSpawner:
 
         logger.info("Spawning sub-agent for task %s (type=%s)", task.id, task.type)
         try:
-            message = self._client.messages.create(
+            response_text = chat(
+                self._client,
                 model=SUBAGENT_MODEL,
-                max_tokens=4096,
                 system=system_prompt,
-                messages=[{"role": "user", "content": user_message}],
+                user_message=user_message,
+                max_tokens=4096,
             )
-            result = self._parse_result(task, message.content[0].text)
+            result = self._parse_result(task, response_text)
         except Exception as exc:
             logger.error("Sub-agent for task %s raised: %s", task.id, exc)
             result = AgentResult(

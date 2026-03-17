@@ -31,21 +31,24 @@ MOCK_LLM_RESPONSE = """{
 
 
 @pytest.fixture()
-def mock_anthropic_client():
-    """Return a mock Anthropic client that returns a fixed JSON response."""
-    mock_message = MagicMock()
-    mock_message.content = [MagicMock(text=MOCK_LLM_RESPONSE)]
+def mock_llm_client():
+    """Return a mock OpenAI client (GitHub Models) that returns a fixed JSON response."""
+    mock_choice = MagicMock()
+    mock_choice.message.content = MOCK_LLM_RESPONSE
+
+    mock_completion = MagicMock()
+    mock_completion.choices = [mock_choice]
 
     mock_client = MagicMock()
-    mock_client.messages.create.return_value = mock_message
+    mock_client.chat.completions.create.return_value = mock_completion
     return mock_client
 
 
 @pytest.fixture()
-def decomposer(mock_anthropic_client):
-    """Return a TaskDecomposer with a mocked Anthropic client."""
+def decomposer(mock_llm_client):
+    """Return a TaskDecomposer with a mocked LLM client."""
     d = TaskDecomposer.__new__(TaskDecomposer)
-    d._client = mock_anthropic_client
+    d._client = mock_llm_client
     return d
 
 
@@ -94,7 +97,7 @@ class TestTaskDecomposer:
         with pytest.raises(ValueError, match="invalid JSON"):
             TaskDecomposer._parse_json("not json at all")
 
-    def test_unknown_agent_type_defaults_to_code_generic(self, decomposer, mock_anthropic_client):
+    def test_unknown_agent_type_defaults_to_code_generic(self, decomposer, mock_llm_client):
         response_with_unknown_type = """{
           "subtasks": [
             {
@@ -106,7 +109,9 @@ class TestTaskDecomposer:
             }
           ]
         }"""
-        mock_anthropic_client.messages.create.return_value.content[0].text = response_with_unknown_type
+        mock_llm_client.chat.completions.create.return_value.choices[0].message.content = (
+            response_with_unknown_type
+        )
         dag = decomposer.decompose("Some task")
         assert dag.subtasks[0].type == AgentType.CODE_GENERIC
 

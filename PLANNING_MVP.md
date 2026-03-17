@@ -289,7 +289,7 @@ de subtareas en orden de dependencias, con manejo de errores y merge final.
 #### Criterios de Aceptación
 Flujo end-to-end funcional:
 ```bash
-ANTHROPIC_API_KEY=sk-... python -m orchestrator run "Create a Python utility with tests"
+GITHUB_TOKEN=ghp_... python -m orchestrator run "Create a Python utility with tests"
 # Descompone en subtareas
 # Ejecuta cada subtarea en orden
 # Muestra tabla de resultados

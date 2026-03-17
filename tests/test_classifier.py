@@ -20,10 +20,12 @@ def classifier_no_llm():
 def classifier_with_mock_llm():
     """Classifier whose LLM always returns 'code-generic'."""
     c = AgentClassifier(use_llm_fallback=True)
-    mock_message = MagicMock()
-    mock_message.content = [MagicMock(text="code-generic")]
+    mock_choice = MagicMock()
+    mock_choice.message.content = "code-generic"
+    mock_completion = MagicMock()
+    mock_completion.choices = [mock_choice]
     mock_client = MagicMock()
-    mock_client.messages.create.return_value = mock_message
+    mock_client.chat.completions.create.return_value = mock_completion
     c._client = mock_client
     return c
 
@@ -78,16 +80,16 @@ class TestLLMFallback:
     def test_llm_fallback_called_when_no_keyword_match(self, classifier_with_mock_llm):
         result = classifier_with_mock_llm.classify("Obscure random task with no keywords")
         assert result == AgentType.CODE_GENERIC
-        classifier_with_mock_llm._client.messages.create.assert_called_once()
+        classifier_with_mock_llm._client.chat.completions.create.assert_called_once()
 
     def test_llm_fallback_not_called_when_keyword_matches(self, classifier_with_mock_llm):
         classifier_with_mock_llm.classify("Write pytest tests")
-        classifier_with_mock_llm._client.messages.create.assert_not_called()
+        classifier_with_mock_llm._client.chat.completions.create.assert_not_called()
 
     def test_llm_fallback_returns_generic_on_exception(self):
         c = AgentClassifier(use_llm_fallback=True)
         mock_client = MagicMock()
-        mock_client.messages.create.side_effect = Exception("API error")
+        mock_client.chat.completions.create.side_effect = Exception("API error")
         c._client = mock_client
         result = c.classify("Obscure task")
         assert result == AgentType.CODE_GENERIC
